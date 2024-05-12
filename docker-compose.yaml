@@ -1,0 +1,52 @@
+services:
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    expose:
+      - 2181
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    restart: always
+    networks:
+      - internal
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    ports:
+      - '9092:9092'
+      - '9094:9094'
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CREATE_TOPICS=trustworthiness
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    depends_on:
+      - zookeeper
+    restart: always
+    networks:
+      - internal
+
+  trustworthiness:
+    image: example/trustworthiness
+    build: .
+    ports:
+      - "80:80"
+    environment:
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
+      - KAFKA_TOPIC=trustworthiness
+      - HOST=0.0.0.0
+      - PORT=80
+      - MIN_DELAY=5
+      - MAX_DELAY=10
+    depends_on:
+      - zookeeper
+      - kafka
+    networks:
+      - internal
+
+networks:
+  internal:
